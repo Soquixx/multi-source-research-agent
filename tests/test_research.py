@@ -72,11 +72,12 @@ async def test_retrieve_combines_multiple_providers():
         [tavily, searxng],
     )
 
-    sources = await pipeline.retrieve(
+    data = await pipeline.retrieve(
         "climate agriculture",
     )
 
-    assert len(sources) == 2
+    assert len(data.sources) == 2
+    assert data.provider_failures == []
 
 
 @pytest.mark.asyncio
@@ -107,12 +108,12 @@ async def test_duplicate_results_are_merged():
         [first, second],
     )
 
-    sources = await pipeline.retrieve(
+    data = await pipeline.retrieve(
         "same article",
     )
 
-    assert len(sources) == 1
-    assert sources[0].providers == [
+    assert len(data.sources) == 1
+    assert data.sources[0].providers == [
         "tavily",
         "searxng",
     ]
@@ -140,13 +141,15 @@ async def test_provider_failure_does_not_stop_pipeline():
         [failing_provider, working_provider],
     )
 
-    sources = await pipeline.retrieve(
+    data = await pipeline.retrieve(
         "test query",
     )
 
-    assert len(sources) == 1
-    assert sources[0].providers == ["searxng"]
+    assert len(data.sources) == 1
+    assert data.sources[0].providers == ["searxng"]
 
+    assert len(data.provider_failures) == 1
+    assert data.provider_failures[0].provider == "tavily"
 
 @pytest.mark.asyncio
 async def test_all_provider_failures_return_empty_results():
@@ -163,11 +166,12 @@ async def test_all_provider_failures_return_empty_results():
         ],
     )
 
-    sources = await pipeline.retrieve(
+    data = await pipeline.retrieve(
         "test query",
     )
 
-    assert sources == []
+    assert data.sources == []
+    assert len(data.provider_failures) == 2
 
 
 @pytest.mark.asyncio
@@ -189,8 +193,8 @@ async def test_result_limit_is_passed_to_providers():
         results_per_provider=2,
     )
 
-    sources = await pipeline.retrieve(
+    data = await pipeline.retrieve(
         "test query",
     )
 
-    assert len(sources) == 2
+    assert len(data.sources) == 2
