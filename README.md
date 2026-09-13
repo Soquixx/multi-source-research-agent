@@ -4,7 +4,16 @@ A web research agent that uses multiple search providers and an LLM to answer re
 
 ## Demo
 
-[🎥 Demo Video](YOUR_DEMO_LINK)
+🎥 **Demo Video:** [Watch the demo](frontend/src/assets/demo.mp4)
+
+The demo shows:
+- Research question input
+- Multi-source retrieval
+- Evidence-based synthesis
+- Supporting claims and sources
+- Uncertainty handling
+
+---
 
 ## Screenshots
 
@@ -18,30 +27,24 @@ A web research agent that uses multiple search providers and an LLM to answer re
 
 ---
 
-## How It Works
+## Workflow
 
-The research flow is:
+The research pipeline follows these stages:
 
-```text
-Question
-   ↓
-Multiple Search Providers
-   ↓
-Deduplication
-   ↓
-Source Ranking
-   ↓
-Source Fetching
-   ↓
-Evidence Extraction
-   ↓
-Evidence Verification
-   ↓
-Conflict Detection
-   ↓
-LLM Synthesis
-   ↓
-Answer + Claims + Sources + Uncertainties
+```mermaid
+flowchart TD
+    A[Research Question] --> B[Multiple Search Providers]
+    B --> C[Merge Results]
+    C --> D[Deduplicate]
+    D --> E[Source Ranking]
+    E --> F[Fetch Source Content]
+    F --> G[Extract Evidence]
+    G --> H[Verify Evidence]
+    H --> I[Detect Conflicts]
+    I --> J{Relevant Evidence?}
+    J -- No --> K[Return Insufficient Evidence]
+    J -- Yes --> L[LLM Synthesis]
+    L --> M[Answer + Claims + Sources + Uncertainties]
 ````
 
 The main pipeline is implemented in `app/core/pipeline.py`.
@@ -50,16 +53,38 @@ The main pipeline is implemented in `app/core/pipeline.py`.
 
 ## Architecture
 
-The project separates the main research stages into independent modules:
+The project separates retrieval, processing, verification, and synthesis into independent modules.
 
-* `providers/` - search provider implementations
-* `processing/deduplication.py` - removes duplicate results
-* `processing/ranking.py` - ranks sources using relevance and quality
-* `processing/fetching.py` - fetches and extracts readable webpage content
-* `processing/evidence.py` - extracts evidence from source content
-* `processing/verification.py` - checks evidence relevance and detects possible conflicts
-* `synthesis/` - generates the final answer using the LLM
-* `core/pipeline.py` - coordinates the complete workflow
+```mermaid
+flowchart LR
+    UI[React Frontend] --> API[FastAPI API]
+    API --> P[Research Pipeline]
+
+    P --> SP[Search Providers]
+    P --> DP[Deduplication]
+    P --> R[Ranking]
+    P --> F[Fetching]
+    P --> E[Evidence Extraction]
+    P --> V[Verification]
+    P --> C[Conflict Detection]
+    P --> S[LLM Synthesis]
+
+    S --> API
+    API --> UI
+```
+
+### Main Modules
+
+| Module                        | Responsibility                                   |
+| ----------------------------- | ------------------------------------------------ |
+| `providers/`                  | Search provider implementations                  |
+| `processing/deduplication.py` | Removes duplicate results                        |
+| `processing/ranking.py`       | Ranks sources using relevance and quality        |
+| `processing/fetching.py`      | Fetches and extracts readable webpage content    |
+| `processing/evidence.py`      | Extracts evidence from source content            |
+| `processing/verification.py`  | Checks evidence relevance and possible conflicts |
+| `synthesis/`                  | Generates the final answer using the LLM         |
+| `core/pipeline.py`            | Coordinates the complete research workflow       |
 
 ---
 
@@ -67,64 +92,59 @@ The project separates the main research stages into independent modules:
 
 ### Multiple Search Providers
 
-The pipeline requires at least two search providers. They are executed independently, so a failure in one provider does not stop the others.
+The pipeline requires at least two search providers. Each provider is queried independently, so a failure in one provider does not stop the complete research process.
 
 ### Deduplication
 
-Results from different providers can point to the same page. Results are normalized and deduplicated before sources are fetched.
+Results from different providers can point to the same page. Results are normalized and deduplicated before the sources are selected for fetching.
 
 ### Source Ranking
 
-Sources are ranked using:
+Sources are ranked using two explicit factors:
 
 * Relevance to the research question
 * Source quality
 
-The ranking uses deterministic rules so that the selection is easy to understand and reproduce.
+The ranking uses deterministic rules so the selection process is predictable and reproducible.
 
 ### Evidence Before Synthesis
 
-Source pages are fetched and evidence is extracted before calling the LLM.
+Source content is fetched and evidence is extracted before the LLM is called.
 
-The evidence is checked for meaningful overlap with the research question. If no relevant evidence is available, the LLM synthesis step is skipped.
+The evidence is then checked for meaningful overlap with the research question. If relevant evidence cannot be found, the synthesis step is skipped.
 
 ### Conflict Detection
 
-The system checks for possible numerical conflicts between evidence from different sources. Conflicts are reported rather than silently choosing one source.
+The system checks for possible numerical conflicts between evidence from different sources.
+
+Potential conflicts are reported instead of silently selecting one value.
+
+### Failure Handling
+
+Search and source-fetch operations use retry handling. If a provider or source cannot be reached, the failure is recorded and the pipeline continues with the available sources where possible.
 
 ---
 
-## Reliability
+## Technology Stack
 
-The pipeline handles common failures such as:
-
-* Search provider failures
-* Request timeouts
-* Source fetch failures
-* Retryable errors
-* Empty search results
-* Missing relevant evidence
-
-Failures are recorded as uncertainties and the pipeline continues when possible.
-
----
-
-## Technology
-
-* Python
-* FastAPI
-* httpx
-* BeautifulSoup
-* Pydantic
-* Google Gemini
-* React
-* Vite
+| Layer           | Technology                |
+| --------------- | ------------------------- |
+| Backend         | Python, FastAPI           |
+| Search          | Multiple search providers |
+| HTTP / Fetching | httpx                     |
+| HTML Parsing    | BeautifulSoup             |
+| Data Validation | Pydantic                  |
+| LLM             | Google Gemini             |
+| Frontend        | React, Vite               |
+| Testing         | Pytest                    |
 
 ---
 
 ## Setup
 
 ### Backend
+
+Create a virtual environment:
 
 ```bash
 python -m venv venv
@@ -142,9 +162,9 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Create `.env` using `.env.example` and add the required API keys.
+Create `.env` from `.env.example` and add the required API keys.
 
-Run:
+Run the backend:
 
 ```bash
 uvicorn app.main:app --reload
@@ -172,9 +192,24 @@ The application returns:
 
 * Synthesized answer
 * Supporting claims
-* Sources
-* Conflicts
-* Uncertainties
+* Retrieved sources
+* Possible conflicts
+* Uncertainties and unavailable evidence
+
+---
+
+## Reliability
+
+The pipeline handles:
+
+* Search provider failures
+* Request timeouts
+* Source fetch failures
+* Retryable errors
+* Empty search results
+* Missing relevant evidence
+
+Failures are recorded as uncertainties instead of being hidden from the user.
 
 ---
 
@@ -196,6 +231,7 @@ pytest
 * Conflict detection focuses on obvious numerical differences.
 * Some websites may block automated requests or require JavaScript rendering.
 * Source quality is based on explicit heuristics and is not a complete credibility assessment.
+* Complex research questions are not currently decomposed into multiple sub-queries.
 
 ---
 
@@ -205,7 +241,7 @@ pytest
 * Better source credibility scoring
 * Improved handling of JavaScript-rendered pages
 * Stronger claim-to-evidence mapping
-* Better conflict detection
+* More robust conflict detection
 * Query decomposition for complex questions
 
 ---
@@ -214,5 +250,10 @@ pytest
 
 I implemented the research pipeline, including multi-provider retrieval, result processing, source fetching, evidence extraction and verification, conflict detection, retry handling, and LLM synthesis.
 
-The main design choice was to keep retrieval and evidence processing separate from the LLM. The LLM is only called after relevant evidence has been found.
+The main design choice was to keep retrieval and evidence processing separate from the LLM. The LLM is called only after relevant evidence has been found.
 
+---
+
+## License
+
+This project was developed as part of an AI/ML internship technical evaluation.
