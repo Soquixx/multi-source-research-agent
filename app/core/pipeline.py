@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from app.core.retry import retry_async
 from app.processing.deduplication import deduplicate_results
@@ -10,6 +11,8 @@ from app.providers.base import SearchProvider
 from app.schemas import Conflict, ResearchResponse, SearchResult, Source
 from app.synthesis.base import SynthesisProvider
 from app.synthesis.guard import can_synthesize
+
+logger = logging.getLogger(__name__)
 
 
 class ResearchPipeline:
@@ -62,10 +65,7 @@ class ResearchPipeline:
         sources = sources[: self.max_sources]
 
         # 4. Fetch source content concurrently.
-        await self._fetch_sources(
-            sources,
-            uncertainties,
-        )
+        await self._fetch_sources(sources, uncertainties)
 
         # 5. Extract deterministic evidence.
         evidence = []
@@ -161,9 +161,9 @@ class ResearchPipeline:
                 )
 
             except Exception as exc:
+                logger.warning("Provider %s search failed: %s", provider.name, exc)
                 uncertainties.append(
-                    f"{provider.name} search failed: "
-                    f"{type(exc).__name__}"
+                    f"Search provider '{provider.name}' was temporarily unavailable."
                 )
                 return []
 
@@ -198,11 +198,7 @@ class ResearchPipeline:
 
             except Exception as exc:
                 source.fetch_success = False
-
-                uncertainties.append(
-                    f"Failed to fetch {source.url}: "
-                    f"{type(exc).__name__}"
-                )
+                logger.info("Failed to fetch full page content for %s: %s", source.url, exc)
 
         await asyncio.gather(
             *(
@@ -210,6 +206,13 @@ class ResearchPipeline:
                 for source in sources
             )
         )
+
+        # Summarize fetch failures instead of exposing raw exception strings
+        failed_count = sum(1 for s in sources if not s.fetch_success)
+        if failed_count > 0:
+            uncertainties.append(
+                f"Full page content could not be retrieved for {failed_count} source(s); analysis relied on available search snippets."
+            )
 
     @staticmethod
     def _insufficient_response(
