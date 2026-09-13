@@ -1,0 +1,196 @@
+import pytest
+
+from app.core.research import ResearchPipeline
+from app.providers.base import SearchProvider
+from app.providers.errors import ProviderTimeoutError
+from app.schemas import SearchResult
+
+class MockProvider(SearchProvider):
+    def __init__(
+        self,
+        provider_name: str,
+        results: list[SearchResult] | None = None,
+        error: Exception | None = None,
+    ):
+        self.provider_name = provider_name
+        self.results = results or []
+        self.error = error
+
+    @property
+    def name(self) -> str:
+        return self.provider_name
+
+    async def search(
+        self,
+        query: str,
+        limit: int = 10,
+    ) -> list[SearchResult]:
+        if self.error:
+            raise self.error
+
+        return self.results[:limit]
+
+
+def result(
+    title: str,
+    url: str,
+    provider: str,
+) -> SearchResult:
+    return SearchResult(
+        title=title,
+        url=url,
+        snippet=f"Relevant information about {title}",
+        provider=provider,
+    )
+
+
+@pytest.mark.asyncio
+async def test_retrieve_combines_multiple_providers():
+    tavily = MockProvider(
+        "tavily",
+        [
+            result(
+                "Climate Report",
+                "https://example.com/climate",
+                "tavily",
+            )
+        ],
+    )
+
+    searxng = MockProvider(
+        "searxng",
+        [
+            result(
+                "Agriculture Report",
+                "https://example.org/agriculture",
+                "searxng",
+            )
+        ],
+    )
+
+    pipeline = ResearchPipeline(
+        [tavily, searxng],
+    )
+
+    sources = await pipeline.retrieve(
+        "climate agriculture",
+    )
+
+    assert len(sources) == 2
+
+
+@pytest.mark.asyncio
+async def test_duplicate_results_are_merged():
+    first = MockProvider(
+        "tavily",
+        [
+            result(
+                "Same Article",
+                "https://example.com/article",
+                "tavily",
+            )
+        ],
+    )
+
+    second = MockProvider(
+        "searxng",
+        [
+            result(
+                "Same Article",
+                "https://example.com/article?utm_source=test",
+                "searxng",
+            )
+        ],
+    )
+
+    pipeline = ResearchPipeline(
+        [first, second],
+    )
+
+    sources = await pipeline.retrieve(
+        "same article",
+    )
+
+    assert len(sources) == 1
+    assert sources[0].providers == [
+        "tavily",
+        "searxng",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_provider_failure_does_not_stop_pipeline():
+    failing_provider = MockProvider(
+        "tavily",
+        error=ProviderTimeoutError(),
+    )
+
+    working_provider = MockProvider(
+        "searxng",
+        [
+            result(
+                "Working Result",
+                "https://example.com/result",
+                "searxng",
+            )
+        ],
+    )
+
+    pipeline = ResearchPipeline(
+        [failing_provider, working_provider],
+    )
+
+    sources = await pipeline.retrieve(
+        "test query",
+    )
+
+    assert len(sources) == 1
+    assert sources[0].providers == ["searxng"]
+
+
+@pytest.mark.asyncio
+async def test_all_provider_failures_return_empty_results():
+    pipeline = ResearchPipeline(
+        [
+            MockProvider(
+                "tavily",
+                error=ProviderTimeoutError(),
+            ),
+            MockProvider(
+                "searxng",
+                error=ProviderTimeoutError(),
+            ),
+        ],
+    )
+
+    sources = await pipeline.retrieve(
+        "test query",
+    )
+
+    assert sources == []
+
+
+@pytest.mark.asyncio
+async def test_result_limit_is_passed_to_providers():
+    provider = MockProvider(
+        "tavily",
+        [
+            result(
+                f"Result {i}",
+                f"https://example.com/{i}",
+                "tavily",
+            )
+            for i in range(5)
+        ],
+    )
+
+    pipeline = ResearchPipeline(
+        [provider],
+        results_per_provider=2,
+    )
+
+    sources = await pipeline.retrieve(
+        "test query",
+    )
+
+    assert len(sources) == 2
