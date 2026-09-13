@@ -1,5 +1,5 @@
 import os
-
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, HTTPException
 from dotenv import load_dotenv
 
@@ -15,6 +15,17 @@ app = FastAPI(
     title="Multi-Source Research Agent",
     version="1.0.0",
 )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 def create_pipeline() -> ResearchPipeline:
     tavily_key = os.getenv("TAVILY_API_KEY")

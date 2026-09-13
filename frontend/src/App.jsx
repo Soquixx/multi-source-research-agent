@@ -1,3 +1,4 @@
+const API_URL = import.meta.env.VITE_API_URL;
 import { useState } from "react";
 import "./index.css";
 
@@ -152,7 +153,7 @@ function App() {
     ];
 
     try {
-      const response = await fetch("/api/research", {
+      const response = await fetch(`${API_URL}/api/research`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
