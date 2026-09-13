@@ -59,19 +59,19 @@ async def test_retrieve_combines_multiple_providers():
         ],
     )
 
-    searxng = MockProvider(
-        "searxng",
+    duckduckgo = MockProvider(
+        "duckduckgo",
         [
             result(
                 "Agriculture Report",
                 "https://example.org/agriculture",
-                "searxng",
+                "duckduckgo",
             )
         ],
     )
 
     pipeline = ResearchPipeline(
-        [tavily, searxng],
+        [tavily, duckduckgo],
     )
 
     data = await pipeline.retrieve(
@@ -96,12 +96,12 @@ async def test_duplicate_results_are_merged():
     )
 
     second = MockProvider(
-        "searxng",
+        "duckduckgo",
         [
             result(
                 "Same Article",
                 "https://example.com/article?utm_source=test",
-                "searxng",
+                "duckduckgo",
             )
         ],
     )
@@ -117,7 +117,7 @@ async def test_duplicate_results_are_merged():
     assert len(data.sources) == 1
     assert data.sources[0].providers == [
         "tavily",
-        "searxng",
+        "duckduckgo",
     ]
 
 
@@ -129,12 +129,12 @@ async def test_provider_failure_does_not_stop_pipeline():
     )
 
     working_provider = MockProvider(
-        "searxng",
+        "duckduckgo",
         [
             result(
                 "Working Result",
                 "https://example.com/result",
-                "searxng",
+                "duckduckgo",
             )
         ],
     )
@@ -148,7 +148,7 @@ async def test_provider_failure_does_not_stop_pipeline():
     )
 
     assert len(data.sources) == 1
-    assert data.sources[0].providers == ["searxng"]
+    assert data.sources[0].providers == ["duckduckgo"]
 
     assert len(data.provider_failures) == 1
     assert data.provider_failures[0].provider == "tavily"
@@ -162,7 +162,7 @@ async def test_all_provider_failures_return_empty_results():
                 error=ProviderTimeoutError(),
             ),
             MockProvider(
-                "searxng",
+                "duckduckgo",
                 error=ProviderTimeoutError(),
             ),
         ],

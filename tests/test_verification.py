@@ -32,7 +32,7 @@ def make_evidence(
 def test_relevant_evidence_is_selected():
     sources = [
         make_source("src1"),
-        make_source("src2", "searxng"),
+        make_source("src2", "duckduckgo"),
     ]
 
     evidence = [
@@ -64,7 +64,7 @@ def test_relevant_evidence_is_selected():
 def test_multiple_sources_reduce_single_source_uncertainty():
     sources = [
         make_source("src1"),
-        make_source("src2", "searxng"),
+        make_source("src2", "duckduckgo"),
     ]
 
     evidence = [

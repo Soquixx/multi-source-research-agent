@@ -13,7 +13,7 @@ def test_duplicate_urls_are_merged():
             title="Example Article",
             url="https://example.com/article?utm_source=google",
             snippet="Second result",
-            provider="searxng",
+            provider="duckduckgo",
         ),
     ]
 
@@ -23,7 +23,7 @@ def test_duplicate_urls_are_merged():
 
     source = sources[0]
 
-    assert source.providers == ["tavily", "searxng"]
+    assert source.providers == ["tavily", "duckduckgo"]
     assert source.url == "https://example.com/article"
 
 
@@ -37,7 +37,7 @@ def test_different_urls_are_not_merged():
         SearchResult(
             title="Article Two",
             url="https://example.com/article?id=2",
-            provider="searxng",
+            provider="duckduckgo",
         ),
     ]
 
@@ -56,7 +56,7 @@ def test_empty_urls_are_ignored():
     ]
 
     sources = deduplicate_results(results)
-    
+
     assert sources == []
 
 
@@ -87,7 +87,7 @@ def test_non_empty_snippet_is_preserved():
             title="Example",
             url="https://example.com/article",
             snippet="Useful content",
-            provider="searxng",
+            provider="duckduckgo",
         ),
     ]
 
