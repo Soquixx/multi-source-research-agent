@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from app.core.results import ProviderFailure, ResearchData
+from app.core.results import (FetchFailure, ProviderFailure, ResearchData)
 from app.processing.deduplication import deduplicate_results
 from app.processing.evidence import extract_evidence
 from app.processing.fetching import fetch_page
@@ -93,9 +93,9 @@ class ResearchPipeline:
             except Exception as exc:
                 source.fetch_success = False
 
-                data.provider_failures.append(
-                    ProviderFailure(
-                        provider=source.url,
+                data.fetch_failures.append(
+                    FetchFailure(
+                        url=source.url,
                         error_type=type(exc).__name__,
                         message=str(exc),
                     )
