@@ -1,7 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, Field
 
-
 class ResearchRequest(BaseModel):
     question: str = Field(
         ...,
@@ -37,16 +36,17 @@ class Evidence(BaseModel):
     text: str
     location: str | None = None
 
-
 class Claim(BaseModel):
     text: str
-    source_ids: list[str] = Field(default_factory=list)
-
+    evidence_ids: list[str] = Field(default_factory=list)
 
 class Conflict(BaseModel):
     description: str
     source_ids: list[str] = Field(default_factory=list)
 
+class SynthesisResult(BaseModel):
+    answer: str
+    claims: list[Claim] = Field(default_factory=list)    
 
 class ResearchResponse(BaseModel):
     answer: str
