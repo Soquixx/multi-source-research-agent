@@ -4,6 +4,8 @@ from app.core.research import ResearchPipeline
 from app.providers.base import SearchProvider
 from app.providers.errors import ProviderTimeoutError
 from app.schemas import SearchResult
+from unittest.mock import AsyncMock, patch
+from app.schemas import Evidence
 
 class MockProvider(SearchProvider):
     def __init__(
@@ -198,3 +200,76 @@ async def test_result_limit_is_passed_to_providers():
     )
 
     assert len(data.sources) == 2
+
+@pytest.mark.asyncio
+async def test_collect_evidence_verifies_retrieved_content():
+    provider = MockProvider(
+        "tavily",
+        [
+            result(
+                "Solar Energy Report",
+                "https://example.com/solar",
+                "tavily",
+            )
+        ],
+    )
+
+    pipeline = ResearchPipeline(
+        [provider],
+        sources_to_fetch=1,
+    )
+
+    content = (
+        "Solar energy production increased by 25 percent "
+        "during the study period."
+    )
+
+    with patch(
+        "app.core.research.fetch_page",
+        new=AsyncMock(return_value=content),
+    ):
+        data = await pipeline.collect_evidence(
+            "How much did solar energy production increase?"
+        )
+
+    assert len(data.evidence) == 1
+    assert len(data.relevant_evidence) == 1
+    assert data.relevant_evidence[0].source_id == (
+        data.sources[0].source_id
+    )
+    assert data.fetch_failures == []
+
+@pytest.mark.asyncio
+async def test_collect_evidence_does_not_synthesize_without_evidence():
+    provider = MockProvider(
+        "tavily",
+        [
+            result(
+                "Unrelated Article",
+                "https://example.com/unrelated",
+                "tavily",
+            )
+        ],
+    )
+
+    pipeline = ResearchPipeline(
+        [provider],
+        sources_to_fetch=1,
+    )
+
+    with patch(
+        "app.core.research.fetch_page",
+        new=AsyncMock(
+            return_value=(
+                "The football match ended in a draw "
+                "after ninety minutes."
+            )
+        ),
+    ):
+        data = await pipeline.collect_evidence(
+            "What caused inflation?"
+        )
+
+    assert data.evidence
+    assert data.relevant_evidence == []
+    assert data.uncertainties    

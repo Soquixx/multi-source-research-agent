@@ -19,6 +19,11 @@ class FetchFailure:
 class ResearchData:
     sources: list[Source] = field(default_factory=list)
     evidence: list[Evidence] = field(default_factory=list)
+    relevant_evidence: list[Evidence] = field(default_factory=list)
+    conflicts: list[tuple[Evidence, Evidence]] = field(
+        default_factory=list
+    )
+    uncertainties: list[str] = field(default_factory=list)
     provider_failures: list[ProviderFailure] = field(
         default_factory=list
     )

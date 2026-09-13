@@ -5,8 +5,10 @@ from app.processing.deduplication import deduplicate_results
 from app.processing.evidence import extract_evidence
 from app.processing.fetching import fetch_page
 from app.processing.ranking import rank_sources
+from app.processing.verification import (detect_conflicts,verify_evidence,)
 from app.providers.base import SearchProvider
 from app.schemas import SearchResult
+
 
 
 DEFAULT_RESULTS_PER_PROVIDER = 10
@@ -102,5 +104,15 @@ class ResearchPipeline:
                 )
 
         data.evidence = evidence
+
+        relevant_evidence , uncertainties = verify_evidence(
+            question,
+            evidence,
+            data.sources
+        )
+
+        data.relevant_evidence = relevant_evidence
+        data.uncertainties.extend(uncertainties)
+        data.conflicts = detect_conflicts(relevant_evidence)
 
         return data
