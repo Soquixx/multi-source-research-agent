@@ -38,8 +38,12 @@ class Evidence(BaseModel):
 
 class Claim(BaseModel):
     text: str
-    evidence_ids: list[str] = Field(default_factory=list)
-
+    evidence_ids: list[str] = Field(
+        ...,
+        min_length=1,
+        description="One or more exact evidence IDs supporting this claim"
+    )
+    
 class Conflict(BaseModel):
     description: str
     source_ids: list[str] = Field(default_factory=list)
