@@ -20,6 +20,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+        "https://multi-source-research-agent-1.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
